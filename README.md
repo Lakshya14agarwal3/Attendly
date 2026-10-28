@@ -11,6 +11,7 @@ The project is intentionally focused on the day-to-day attendance workflow inste
 - Student enrolment using the student's registered email address
 - Subject-wise and period-wise attendance marking
 - Updating an existing period record instead of creating duplicates
+- Course deletion and student removal by faculty
 - Student dashboard with course-wise and overall attendance percentage
 - Low-attendance list based on a configurable threshold
 - Email alerts for students below the threshold
@@ -25,6 +26,55 @@ The project is intentionally focused on the day-to-day attendance workflow inste
 | Database | MongoDB with Mongoose |
 | Authentication | JSON Web Tokens and bcrypt |
 | Email | Nodemailer with SMTP |
+
+## Database schema
+
+```mermaid
+erDiagram
+    USER ||--o{ COURSE : "faculty teaches"
+    USER }o--o{ COURSE : "students enrolled"
+    COURSE ||--o{ ATTENDANCE : "has sessions"
+    ATTENDANCE ||--|{ ATTENDANCE_RECORD : "contains"
+    USER ||--o{ ATTENDANCE_RECORD : "receives marks"
+
+    USER {
+        ObjectId _id PK
+        string name
+        string email UK "unique, lowercase"
+        string password "bcrypt hash"
+        string role "faculty or student"
+        string rollNumber "optional"
+        Date createdAt
+        Date updatedAt
+    }
+
+    COURSE {
+        ObjectId _id PK
+        string code "uppercase"
+        string title
+        ObjectId faculty FK "User"
+        ObjectId[] students FK "User"
+        Date createdAt
+        Date updatedAt
+    }
+
+    ATTENDANCE {
+        ObjectId _id PK
+        ObjectId course FK "Course"
+        string date "YYYY-MM-DD"
+        string period "free text"
+        Date createdAt
+        Date updatedAt
+    }
+
+    ATTENDANCE_RECORD {
+        ObjectId _id PK
+        ObjectId student FK "User"
+        string status "present or absent"
+    }
+```
+
+`ATTENDANCE_RECORD` is an embedded subdocument in `attendances.records`, not a separate collection. Unique indexes exist on `users.email` and on the compound keys `courses(code, faculty)` and `attendances(course, date, period)`.
 
 ## Project structure
 
@@ -170,6 +220,8 @@ Without SMTP settings, the application stays usable: it prepares the alerts and 
 | `GET` | `/api/courses` | List courses available to the signed-in user |
 | `POST` | `/api/courses` | Create a course as faculty |
 | `POST` | `/api/courses/:courseId/enroll` | Enrol a student as faculty |
+| `DELETE` | `/api/courses/:courseId` | Delete a course and its attendance records |
+| `DELETE` | `/api/courses/:courseId/students/:studentId` | Remove a student from a course |
 | `POST` | `/api/attendance/mark` | Save one course/date/period attendance sheet |
 | `GET` | `/api/attendance/dashboard` | Get a student's attendance summary |
 | `GET` | `/api/attendance/low-attendance` | Get low-attendance students for faculty |
@@ -179,6 +231,8 @@ Without SMTP settings, the application stays usable: it prepares the alerts and 
 
 - One attendance record is stored per course, date, and period.
 - Saving the same course/date/period again updates that period's record.
+- Deleting a course also deletes its attendance sessions.
+- Removing a student from a course also removes their records from that course's sessions; the student account is kept.
 - The CSV report includes the student's present count, total classes, and percentage.
 - This version does not include an administrator panel, timetable management, leave requests, or SMS notifications.
 
