@@ -1,6 +1,6 @@
-# SmartAttend
+# Attendly
 
-SmartAttend is a lightweight attendance management application for colleges and small departments. Faculty can create a subject, enrol students, mark attendance for a particular date and period, and download a course report. Students get a simple dashboard showing their attendance percentage for each subject.
+Attendly is a lightweight attendance management application for colleges and small departments. Faculty can create a subject, enrol students, mark attendance for a particular date and period, and download a course report. Students get a simple dashboard showing their attendance percentage for each subject.
 
 The project is intentionally focused on the day-to-day attendance workflow instead of trying to be a complete college ERP system.
 
