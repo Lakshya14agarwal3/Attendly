@@ -10,9 +10,13 @@ const router = express.Router();
 router.use(protect);
 
 router.get("/course/:courseId", allowRoles("faculty"), async (req, res) => {
-  const course = await Course.findOne({ _id: req.params.courseId, faculty: req.user.id }).populate("students", "name email rollNumber");
-  if (!course) return res.status(404).json({ message: "Course not found." });
-  res.json(course.students);
+  try {
+    const course = await Course.findOne({ _id: req.params.courseId, faculty: req.user.id }).populate("students", "name email rollNumber");
+    if (!course) return res.status(404).json({ message: "Course not found." });
+    res.json(course.students);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
 
 router.post("/mark", allowRoles("faculty"), async (req, res) => {
@@ -82,18 +86,27 @@ router.post("/send-alerts", allowRoles("faculty"), async (req, res) => {
       if (subjects.length) messages.push({ student, subjects });
     }
 
-    if (process.env.SMTP_HOST && messages.length) {
+    const recipients = messages.filter(({ student }) => student.email);
+    if (process.env.SMTP_HOST) {
+      if (!recipients.length) {
+        return res.json({ message: "No low-attendance student has an email address to notify.", sent: 0, failed: 0, skipped: messages.length, mode: "email" });
+      }
+
       const transporter = nodemailer.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587), secure: false, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } });
-      await Promise.all(messages.filter(({ student }) => student.email).map(({ student, subjects }) => transporter.sendMail({
+      const results = await Promise.allSettled(recipients.map(({ student, subjects }) => transporter.sendMail({
         from: process.env.ALERT_FROM || process.env.SMTP_USER,
         to: student.email,
         subject: "Low attendance alert",
         text: `Hi ${student.name}, your attendance is below ${threshold}% in: ${subjects.map((s) => `${s.code} (${s.percentage}%)`).join(", ")}. Please contact your faculty.`
       })));
-      return res.json({ message: `Email alerts sent to ${messages.length} student(s).`, sent: messages.length, mode: "email" });
+      const sent = results.filter((result) => result.status === "fulfilled").length;
+      const failed = results.length - sent;
+      const skipped = messages.length - recipients.length;
+      const details = [failed && `${failed} failed`, skipped && `${skipped} skipped without an email`].filter(Boolean).join(", ");
+      return res.json({ message: `Email alerts sent to ${sent} student(s)${details ? ` (${details})` : ""}.`, sent, failed, skipped, mode: "email" });
     }
     console.log("Low-attendance email alerts (SMTP not configured):", messages.map(({ student, subjects }) => ({ to: student.email, subjects })));
-    res.json({ message: `${messages.length} email alert(s) prepared. Add SMTP credentials to send them.`, sent: messages.length, mode: "preview" });
+    res.json({ message: `${messages.length} email alert(s) prepared. Add SMTP credentials to send them.`, sent: 0, prepared: messages.length, mode: "preview" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

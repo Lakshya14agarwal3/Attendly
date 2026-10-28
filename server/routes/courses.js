@@ -1,4 +1,5 @@
 import express from "express";
+import Attendance from "../models/Attendance.js";
 import Course from "../models/Course.js";
 import User from "../models/User.js";
 import { allowRoles, protect } from "../middleware/auth.js";
@@ -28,6 +29,38 @@ router.post("/", allowRoles("faculty"), async (req, res) => {
   } catch (error) {
     const message = error.code === 11000 ? "You already created a course with that code." : error.message;
     res.status(400).json({ message });
+  }
+});
+
+router.delete("/:courseId", allowRoles("faculty"), async (req, res) => {
+  try {
+    const course = await Course.findOneAndDelete({ _id: req.params.courseId, faculty: req.user.id });
+    if (!course) return res.status(404).json({ message: "Course not found." });
+    await Attendance.deleteMany({ course: course._id });
+    res.json({ message: `${course.code} and its attendance records were deleted.` });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete("/:courseId/students/:studentId", allowRoles("faculty"), async (req, res) => {
+  try {
+    const course = await Course.findOne({ _id: req.params.courseId, faculty: req.user.id });
+    if (!course) return res.status(404).json({ message: "Course not found." });
+    if (!course.students.some((id) => id.equals(req.params.studentId))) {
+      return res.status(404).json({ message: "Student is not enrolled in this course." });
+    }
+
+    course.students.pull(req.params.studentId);
+    await course.save();
+    await Attendance.updateMany(
+      { course: course._id, "records.student": req.params.studentId },
+      { $pull: { records: { student: req.params.studentId } } }
+    );
+    await course.populate("students", "name email rollNumber");
+    res.json(course);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 
