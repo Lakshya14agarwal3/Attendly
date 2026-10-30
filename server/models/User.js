@@ -1,5 +1,7 @@
+// MongoDB Mongoose model file: defines the User collection.
 import mongoose from "mongoose";
 
+// Stores login details and the faculty or student role for each user.
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },

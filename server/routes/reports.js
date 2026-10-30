@@ -1,3 +1,4 @@
+// Express routes file: creates downloadable CSV attendance reports.
 import express from "express";
 import Attendance from "../models/Attendance.js";
 import Course from "../models/Course.js";
@@ -6,6 +7,7 @@ import { allowRoles, protect } from "../middleware/auth.js";
 const router = express.Router();
 router.use(protect, allowRoles("faculty"));
 
+// Creates a downloadable CSV report for one faculty-owned course.
 router.get("/course/:courseId.csv", async (req, res) => {
   try {
     const course = await Course.findOne({ _id: req.params.courseId, faculty: req.user.id }).populate("students", "name email rollNumber");

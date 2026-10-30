@@ -1,3 +1,4 @@
+// Express routes file: handles user registration, login, and profile requests.
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -6,10 +7,12 @@ import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 
+// Creates a JWT token after registration or login.
 function tokenFor(user) {
   return jwt.sign({ id: user._id, role: user.role, name: user.name }, process.env.JWT_SECRET, { expiresIn: "7d" });
 }
 
+// Creates a new faculty or student account.
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password, role, rollNumber } = req.body;
@@ -24,6 +27,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
+// Checks email and password, then returns a login token.
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;

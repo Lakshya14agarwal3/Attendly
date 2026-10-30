@@ -1,3 +1,4 @@
+// Express routes file: handles attendance marking, dashboards, alerts, and email.
 import express from "express";
 import nodemailer from "nodemailer";
 import Attendance from "../models/Attendance.js";
@@ -9,6 +10,7 @@ import { studentSummary } from "../services/summary.js";
 const router = express.Router();
 router.use(protect);
 
+// Returns students enrolled in a course so faculty can mark their attendance.
 router.get("/course/:courseId", allowRoles("faculty"), async (req, res) => {
   try {
     const course = await Course.findOne({ _id: req.params.courseId, faculty: req.user.id }).populate("students", "name email rollNumber");
@@ -19,6 +21,7 @@ router.get("/course/:courseId", allowRoles("faculty"), async (req, res) => {
   }
 });
 
+// Creates or updates attendance for one selected period.
 router.post("/mark", allowRoles("faculty"), async (req, res) => {
   try {
     const { courseId, date, period, records } = req.body;
@@ -43,6 +46,7 @@ router.post("/mark", allowRoles("faculty"), async (req, res) => {
   }
 });
 
+// Returns the signed-in student's subject-wise attendance dashboard.
 router.get("/dashboard", allowRoles("student"), async (req, res) => {
   try {
     const subjects = await studentSummary(req.user.id);
@@ -53,6 +57,7 @@ router.get("/dashboard", allowRoles("student"), async (req, res) => {
   }
 });
 
+// Finds students below the faculty-selected attendance threshold.
 router.get("/low-attendance", allowRoles("faculty"), async (req, res) => {
   try {
     const threshold = Math.min(100, Math.max(1, Number(req.query.threshold) || 75));
@@ -73,6 +78,7 @@ router.get("/low-attendance", allowRoles("faculty"), async (req, res) => {
   }
 });
 
+// Sends low-attendance email alerts when SMTP is configured.
 router.post("/send-alerts", allowRoles("faculty"), async (req, res) => {
   try {
     const threshold = Math.min(100, Math.max(1, Number(req.body.threshold) || 75));

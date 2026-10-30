@@ -1,3 +1,4 @@
+// Express routes file: handles course creation, listing, and student enrolment.
 import express from "express";
 import Attendance from "../models/Attendance.js";
 import Course from "../models/Course.js";
@@ -7,6 +8,7 @@ import { allowRoles, protect } from "../middleware/auth.js";
 const router = express.Router();
 router.use(protect);
 
+// Returns courses taught by faculty or enrolled by a student.
 router.get("/", async (req, res) => {
   try {
     const filter = req.user.role === "faculty" ? { faculty: req.user.id } : { students: req.user.id };
@@ -20,6 +22,7 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Lets faculty create a new course.
 router.post("/", allowRoles("faculty"), async (req, res) => {
   try {
     const { code, title } = req.body;
@@ -64,6 +67,7 @@ router.delete("/:courseId/students/:studentId", allowRoles("faculty"), async (re
   }
 });
 
+// Adds an existing student account to a faculty member's course.
 router.post("/:courseId/enroll", allowRoles("faculty"), async (req, res) => {
   try {
     const course = await Course.findOne({ _id: req.params.courseId, faculty: req.user.id });

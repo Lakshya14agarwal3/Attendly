@@ -1,6 +1,8 @@
+// Node.js backend helper file: calculates attendance summaries for students.
 import Attendance from "../models/Attendance.js";
 import Course from "../models/Course.js";
 
+// Calculates present classes, total classes, and percentage for one student.
 export async function studentSummary(studentId) {
   const courses = await Course.find({ students: studentId }).select("code title").lean();
   const rows = await Attendance.find({ "records.student": studentId }).lean();

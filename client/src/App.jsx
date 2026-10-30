@@ -1,12 +1,15 @@
+// React frontend file: contains the application's UI screens and components.
 import { useEffect, useMemo, useState } from "react";
 import { api } from "./api";
 
 const today = new Date().toISOString().slice(0, 10);
 
+// Shows success or error messages below the page heading.
 function Notice({ notice }) {
   return notice ? <div className={`notice ${notice.type || "success"}`}>{notice.text}</div> : null;
 }
 
+// Contains both the sign-in and registration form.
 function AuthScreen({ onSignedIn }) {
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "faculty", rollNumber: "" });
@@ -14,6 +17,7 @@ function AuthScreen({ onSignedIn }) {
   const [error, setError] = useState("");
   const set = (key, value) => setForm((old) => ({ ...old, [key]: value }));
 
+  // Sends login or registration details to the server.
   async function submit(event) {
     event.preventDefault();
     setBusy(true); setError("");
@@ -54,10 +58,12 @@ function AuthScreen({ onSignedIn }) {
   </main>;
 }
 
+// Displays the top bar shown after a user signs in.
 function Header({ user, onLogout }) {
   return <header className="topbar"><div className="brand"><span className="brand-mark">✓</span> Attendly</div><div className="user-menu"><span className="role-pill">{user.role}</span><span className="avatar">{user.name?.[0]}</span><span className="user-name">{user.name}</span><button className="link-button" onClick={onLogout}>Log out</button></div></header>;
 }
 
+// Faculty can create courses, enrol students, mark attendance, and send alerts here.
 function FacultyDashboard({ user }) {
   const [courses, setCourses] = useState([]);
   const [selectedId, setSelectedId] = useState("");
@@ -72,6 +78,7 @@ function FacultyDashboard({ user }) {
   const [busy, setBusy] = useState(false);
   const selected = useMemo(() => courses.find((course) => course._id === selectedId) || courses[0], [courses, selectedId]);
 
+  // Loads only the courses that belong to the signed-in user.
   async function loadCourses() {
     try {
       const data = await api("/courses"); setCourses(data);
@@ -94,6 +101,7 @@ function FacultyDashboard({ user }) {
     setBusy(true);
     try { await api(`/courses/${selected._id}/enroll`, { method: "POST", body: JSON.stringify({ email: studentEmail }) }); setStudentEmail(""); await loadCourses(); tell("Student enrolled successfully."); } catch (err) { tell(err.message, "error"); } finally { setBusy(false); }
   }
+  // Saves one attendance sheet for the selected course, date, and period.
   async function mark(event) {
     event.preventDefault(); if (!selected) return;
     setBusy(true);
@@ -155,6 +163,7 @@ function FacultyDashboard({ user }) {
   </div></>;
 }
 
+// Students can only view their own attendance summary.
 function StudentDashboard({ user }) {
   const [dashboard, setDashboard] = useState({ subjects: [], overall: { present: 0, total: 0, percentage: 0 } });
   const [error, setError] = useState("");
@@ -167,6 +176,7 @@ function StudentDashboard({ user }) {
 
 function Empty({ text }) { return <div className="empty"><span>⌁</span><p>{text}</p></div>; }
 
+// Chooses the correct screen based on whether the user is signed in and their role.
 export default function App() {
   const [user, setUser] = useState(() => { try { return JSON.parse(localStorage.getItem("attendance_user")); } catch { return null; } });
   return user ? user.role === "faculty" ? <FacultyDashboard user={user} /> : <StudentDashboard user={user} /> : <AuthScreen onSignedIn={setUser} />;
